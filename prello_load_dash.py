@@ -6,61 +6,64 @@
 
 import sqlite3
 import pandas as pd
+import streamlit as st
+from google.oauth2 import service_account
+from google.cloud import bigquery
 
-# Path to your SQLite database
-db_path = "prello_data.db"
+# Create API client.
+credentials = service_account.Credentials.from_service_account_info(
+    st.secrets["gcp_service_account"]
+)
+client = bigquery.Client(credentials=credentials)
 
-# Connect to the database
-conn = sqlite3.connect(db_path)
+# Perform query.
+# Uses st.cache_data to only rerun when the query changes or after 10 min.
+@st.cache_data(ttl=600)
 
-# Create a cursor object
-cursor = conn.cursor()
+def run_query(table_name):
+    query = f"""
+    SELECT *
+    FROM `learned-raceway-436207-f6.1821_prello.{table_name}`
+    """
+    df = client.query(query).to_dataframe()
+    return df
 
-# Fetch the list of tables
-cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-tables = cursor.fetchall()
+# List of tables to import
+tables = [
+    "POI_tourist_establishments",
+    "POI_touristic_sites_by_municipality",
+    "average_salary_by_municipality",
+    "geographical_referential",
+    "housing_stock",
+    "notary_real_estate_sales",
+    "population_by_municipality",
+    "poverty_population_by_municipality",
+    "real_estate_info_by_municipality"
+]
 
 # Dictionary to store DataFrames
-dataframes = {}
+dfs = {} 
 
-# Loop through each table and load it into a DataFrame
-for table in tables:
-    table_name = table[0]  # Extract the table name from the tuple
-    query = f"SELECT * FROM {table_name};"  # Query to select all data from the table
-    df = pd.read_sql_query(query, conn)  # Load the table into a DataFrame
-    dataframes[table_name] = df  # Store the DataFrame in the dictionary
-    print(f"Table '{table_name}' loaded into DataFrame 'df_{table_name}'.")
+# Loop through each table and import data
+for table in tables:    
+    # Run the query and load results into a Pandas DataFrame
+    # and store it in the dictionary with the table name as the key
+    dfs[table] = run_query(table)
 
-# Close the connection
-conn.close()
-
-
-# In[2]:
-
-
-df_POI_tourist_establishments = dataframes['POI_tourist_establishments']
-df_POI_touristic_sites_by_municipality = dataframes['POI_touristic_sites_by_municipality']
-df_average_salary_by_municipality = dataframes['average_salary_by_municipality']
-df_geographical_referential = dataframes['geographical_referential']
-df_housing_stock = dataframes['housing_stock']
-df_notary_real_estate_sales = dataframes['notary_real_estate_sales']
-df_population_by_municipality = dataframes['population_by_municipality']
-df_poverty_population_by_municipality = dataframes['poverty_population_by_municipality']
-df_real_estate_info_by_municipality = dataframes['real_estate_info_by_municipality']
 
 
 # In[3]:
 
 
-df_estab = df_POI_tourist_establishments
-df_sites = df_POI_touristic_sites_by_municipality
-df_salary = df_average_salary_by_municipality
-df_geo = df_geographical_referential
-df_housing = df_housing_stock
-df_sales = df_notary_real_estate_sales
-df_pop = df_population_by_municipality
-df_pov = df_poverty_population_by_municipality
-df_realty = df_real_estate_info_by_municipality
+df_estab = dfs["POI_tourist_establishments"]
+df_sites = dfs["POI_touristic_sites_by_municipality"]
+df_salary = dfs["average_salary_by_municipality"]
+df_geo = dfs["geographical_referential"]
+df_housing = dfs["housing_stock"]
+df_sales = dfs["notary_real_estate_sales"]
+df_pop = dfs["population_by_municipality"]
+df_pov = dfs["poverty_population_by_municipality"]
+df_realty = dfs["real_estate_info_by_municipality"]
 
 
 # In[4]:
@@ -493,31 +496,6 @@ if __name__ == '__main__':
     app.run(port=8053, debug=True)
 
 
-# In[20]:
-
-
-import sqlite3
-
-# Initialize SQLite connection and cursor
-sqlite_db_path = "prello_testing_raw.db"
-conn = sqlite3.connect(sqlite_db_path)
-cursor = conn.cursor()
-
-# Define the table name and schema in SQLite
-str_avg.to_sql(table_name, conn, if_exists="replace", index=False)
-
-# Commit and close the connection
-conn.commit()
-conn.close()
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
 
 
 
